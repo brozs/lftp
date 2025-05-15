@@ -121,7 +121,7 @@ bool TorrentTracker::AddPeer(const xstring& addr,int port) const
 int TorrentTracker::Do()
 {
    int m=STALL;
-   if(Failed())
+   if(Failed() || !backend)
       return m;
    if(backend && backend->IsActive()) {
       if(tracker_timeout_timer.Stopped()) {
@@ -165,6 +165,8 @@ void TorrentTracker::Start()
 }
 void TorrentTracker::SendTrackerRequest(const char *event)
 {
+   if(!backend)
+      return;
    backend->SendTrackerRequest(event);
    tracker_timeout_timer.Reset();
 }
@@ -410,11 +412,9 @@ int UdpTracker::Do()
    }
    if(!has_connection_id) {
       // need to get connection id
-      SendConnectRequest();
-      return MOVED;
+      return SendConnectRequest() ? MOVED : m;
    }
-   SendEventRequest();
-   return MOVED;
+   return SendEventRequest() ? MOVED : m;
 }
 
 void UdpTracker::NextPeer() {
@@ -539,7 +539,7 @@ bool UdpTracker::SendPacket(Buffer& req)
 
 bool UdpTracker::SendConnectRequest()
 {
-   LogNote(9,"connecting...");
+   LogNote(9,"sending UDP tracker connect request...");
    Buffer req;
    req.PackUINT64BE(connect_magic);
    req.PackUINT32BE(a_connect);

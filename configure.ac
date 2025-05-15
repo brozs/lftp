@@ -1,11 +1,11 @@
 dnl Process this file with autoconf to produce a configure script.
-AC_PREREQ([2.63])
-AC_INIT([lftp],m4_esyscmd([build-aux/git-version-gen .tarball-version]),[lftp-bugs@lftp.yar.ru])
+AC_PREREQ([2.71])
+AC_INIT([lftp],[m4_esyscmd(build-aux/git-version-gen .tarball-version)],[lftp-bugs@lftp.yar.ru])
 AC_CONFIG_AUX_DIR([build-aux])
 AC_CONFIG_MACRO_DIR([m4])
 AC_CONFIG_LIBOBJ_DIR([lib])
 AC_CONFIG_SRCDIR([src/ftpclass.cc])
-AM_CONFIG_HEADER([lib/config.h])
+AC_CONFIG_HEADERS([lib/config.h])
 AM_INIT_AUTOMAKE
 
 dnl This doesn't *require* GNU extensions; it merely enables them if
@@ -136,9 +136,9 @@ esac
 dnl ** LFTP needs iconv, call the test explicitly (even if --disable-nls)
 AM_ICONV
 
-ALL_LINGUAS="de es fr it ja ko pl pt_BR ru uk zh_CN zh_TW zh_HK cs"
+ALL_LINGUAS="de es fr it ja ko pl pt_BR sr ru uk zh_CN zh_TW zh_HK cs"
 AM_GNU_GETTEXT([external])
-AM_GNU_GETTEXT_VERSION([0.15])
+AM_GNU_GETTEXT_VERSION([0.21])
 test "$MSGFMT"  = "no" && MSGFMT  ="$missing_dir/missing msgfmt"
 test "$GMSGFMT" = "no" && GMSGFMT ="$missing_dir/missing msgfmt"
 test "$XGETTEXT" = ":" && XGETTEXT="$missing_dir/missing xgettext"
@@ -351,9 +351,7 @@ LFTP_LIBIDN2_CHECK
 
 dnl Checks for header files.
 AC_HEADER_DIRENT
-AC_HEADER_STDC
 AC_HEADER_SYS_WAIT
-AC_HEADER_TIME
 AC_CHECK_HEADERS(libintl.h fcntl.h sys/time.h errno.h stdlib.h varargs.h dirent.h\
  termios.h termio.h sys/select.h sys/stropts.h string.h memory.h\
  strings.h sys/ioctl.h dlfcn.h arpa/inet.h arpa/nameser.h netinet/in.h netinet/tcp.h\

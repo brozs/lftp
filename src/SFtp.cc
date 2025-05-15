@@ -261,14 +261,17 @@ int SFtp::Do()
       if(s==0)
       {
 	 // no more data, set attributes and close the file.
-	 Request_FSETSTAT *req=new Request_FSETSTAT(handle,protocol_version);
-	 if(entity_date!=NO_DATE) {
-	    req->attrs.mtime=entity_date;
-	    req->attrs.flags|=SSH_FILEXFER_ATTR_MODIFYTIME;
-	 }
-	 req->attrs.size=pos;
-	 req->attrs.flags|=SSH_FILEXFER_ATTR_SIZE;
-	 SendRequest(req,Expect::IGNORE);
+	 if (!skip_fsetstat)
+	 {
+            Request_FSETSTAT *req=new Request_FSETSTAT(handle,protocol_version);
+            if(entity_date!=NO_DATE) {
+               req->attrs.mtime=entity_date;
+               req->attrs.flags|=SSH_FILEXFER_ATTR_MODIFYTIME;
+            }
+            req->attrs.size=pos;
+            req->attrs.flags|=SSH_FILEXFER_ATTR_SIZE;
+            SendRequest(req,Expect::IGNORE);
+         }
 	 CloseHandle(Expect::DEFAULT);
 	 state=WAITING;
 	 m=MOVED;
@@ -343,7 +346,9 @@ void SFtp::Init()
    size_read=0x8000;
    size_write=0x8000;
    use_full_path=false;
+   skip_fsetstat=false;
    flush_timer.Set(0,500);
+   max_out_of_order=64;
 }
 
 SFtp::SFtp() : SSH_Access("SFTP:")
@@ -892,7 +897,7 @@ void SFtp::HandleExpect(Expect *e)
 	 {
 	    LogNote(9,"put a packet with id=%d on out-of-order chain (need_pos=%lld packet_pos=%lld)",
 	       reply->GetID(),(long long)(pos+file_buf->Size()),(long long)r->pos);
-	    if(ooo_chain.count()>=64)
+	    if(ooo_chain.count()>=max_out_of_order)
 	    {
 	       LogError(0,"Too many out-of-order packets");
 	       Disconnect();
@@ -1192,7 +1197,10 @@ int SFtp::Read(Buffer *buf,int size)
    {
       // keep some packets in flight.
       int limit=(entity_size>=0?max_packets_in_flight:max_packets_in_flight_slow_start);
-      if(RespQueueSize()<limit && !file_buf->Eof())
+      int ooo_queue_available=max_out_of_order-ooo_chain.count();
+      int current_in_flight=RespQueueSize();
+      if(RespQueueSize()<limit && !file_buf->Eof()
+         && current_in_flight < ooo_queue_available)
       {
 	 // but don't request much after possible EOF.
 	 if(entity_size<0 || request_pos<entity_size || RespQueueSize()<2)
@@ -1390,6 +1398,7 @@ void SFtp::Reconfig(const char *name)
    if(size_write<16)
       size_write=16;
    use_full_path=QueryBool("use-full-path",c);
+   skip_fsetstat=QueryBool("skip-fsetstat",c);
    if(!xstrcmp(name,"sftp:charset") && protocol_version && protocol_version<4)
    {
       if(!IsSuspended())
